@@ -16,31 +16,31 @@ Author: Markus John [johm@quyo.de]
 
 Automatically logs in any re-joining players if they didn't change their nick, ident and host since quitting.
 
-###irpgbot.v3.1.2+config
+### irpgbot.v3.1.2+config
 
 Author: Christian Schuster [blackout@s2000.ws]
 
 This small patch prevents the bot from complaining about undefined values when some configurations options are empty. This is the case if there is nothing but whitespace after the name of the option in the configuration file.
 
-###irpgbot.v3.1.2+ha
+### irpgbot.v3.1.2+ha
 
 Author: Christian Schuster [blackout@s2000.ws]
 
 Another small patch to catch the rare case of an undefined user name to be handled by the bot. This may happen when someone tries to execute a privileged command immediately after bot startup.
 
-###irpgbot.v3.1.2+ipv6
+### irpgbot.v3.1.2+ipv6
 
 Author: Markus John [johm@quyo.de]
 
 This patch adds IPv6 support to the bot. If you'd like to find out more about IPv6, visit http://www.ipv6.org/.
 
-###irpgbot.v3.1.2+itemlevel
+### irpgbot.v3.1.2+itemlevel
 
 Author: Christian Schuster [blackout@s2000.ws]
 
 This one fixes some warnings when string to integer conversion is called for a non-numeric argument (levels of unique items). The desired result, but without the warnings, is now achieved by separating the tag from the numeric level.
 
-###irpgbot.v3.1.2+johm+chschu
+### irpgbot.v3.1.2+johm+chschu
 
 Authors: Markus John [johm@quyo.de], Christian Schuster [blackout@s2000.ws]
 
