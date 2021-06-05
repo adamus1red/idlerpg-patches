@@ -1,0 +1,55 @@
+diff -ur irpgbot.v3.1.2/.irpg.conf irpgbot.v3.1.2+johm+chschu/.irpg.conf
+--- irpgbot.v3.1.2/.irpg.conf	Mon Jun  7 12:28:56 2004
++++ irpgbot.v3.1.2+johm+chschu/.irpg.conf	Tue Jun 15 01:08:44 2004
+@@ -17,6 +17,9 @@
+ # remove or comment out this line so the bot knows that you edited the config
+ # file
+ die
++
++# Use ipv6 to connect to irc server?
++ipv6 off
+ 
+ # local hostname or address to bind to. leave blank or comment out if you don't
+ # want to use a vhost
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	2004-06-07 16:06:06.000000000 +0200
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	2004-06-17 00:22:08.000000000 +0200
+@@ -28,6 +28,7 @@
+ use strict;
+ use warnings;
+ use IO::Socket;
++use IO::Socket::INET6;
+ use IO::Select;
+ use Data::Dumper;
+ use Getopt::Long;
+@@ -42,6 +43,7 @@
+ GetOptions(\%opts,
+     "help|h",
+     "verbose|v",
++    "ipv6",
+     "debug",
+     "debugfile=s",
+     "server|s=s",
+@@ -225,11 +227,18 @@
+ 
+ while (!$sock && $conn_tries < 2*@{$opts{servers}}) {
+     debug("Connecting to $opts{servers}->[0]...");
+-    my %sockinfo = (PeerAddr => $opts{servers}->[0],
+-                    PeerPort => 6667);
++    my %sockinfo = (PeerAddr => $opts{servers}->[0]);
+     if ($opts{localaddr}) { $sockinfo{LocalAddr} = $opts{localaddr}; }
+-    $sock = IO::Socket::INET->new(%sockinfo) or
+-        debug("Error: failed to connect: $!\n");
++
++    if ($opts{ipv6}) {
++        $sock = IO::Socket::INET6->new(%sockinfo) or
++            debug("Error: failed to connect: $!\n");
++    }
++    else {
++        $sock = IO::Socket::INET->new(%sockinfo) or
++            debug("Error: failed to connect: $!\n");
++    }
++
+     ++$conn_tries;
+     if (!$sock) {
+         # cycle front server to back if connection failed

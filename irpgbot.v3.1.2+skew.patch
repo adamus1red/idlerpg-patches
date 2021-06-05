@@ -1,0 +1,66 @@
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	Mon Jun  7 12:28:56 2004
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	Wed Jun 16 22:38:27 2004
+@@ -113,6 +113,7 @@
+     stage => 1); # quest info
+ 
+ my $rpreport = 0; # constant for reporting top players
++my $oldrpreport = 0; # constant for reporting top players (last value)
+ my %prev_online; # user@hosts online on restart, die
+ my %auto_login; # users to automatically log back on
+ my @bans; # bans auto-set by the bot, saved to be removed after 1 hour
+@@ -1153,7 +1154,7 @@
+     
+     # statements using $rpreport do not bother with scaling by the clock because
+     # $rpreport is adjusted by the number of seconds since last rpcheck()
+-    if ($rpreport%120==0 && $opts{writequestfile}) { writequestfile(); }
++    if (($rpreport%120 < $oldrpreport%120) && $opts{writequestfile}) { writequestfile(); }
+     if (time() > $quest{qtime}) {
+         if (!@{$quest{questers}}) { quest(); }
+         elsif ($quest{type} == 1) {
+@@ -1169,7 +1170,7 @@
+         }
+         # quest type 2 awards are handled in moveplayers()
+     }
+-    if ($rpreport && $rpreport%36000==0) { # 10 hours
++    if ($rpreport && ($rpreport%36000 < $oldrpreport%36000)) { # 10 hours
+         my @u = sort { $rps{$b}{level} <=> $rps{$a}{level} ||
+                        $rps{$a}{next}  <=> $rps{$b}{next} } keys(%rps);
+         chanmsg("Idle RPG Top Players:") if @u;
+@@ -1181,7 +1182,7 @@
+         }
+         backup();
+     }
+-    if ($rpreport%3600==0 && $rpreport) { # 1 hour
++    if (($rpreport%3600 < $oldrpreport%3600) && $rpreport) { # 1 hour
+         my @players = grep { $rps{$_}{online} &&
+                              $rps{$_}{level} > 44 } keys(%rps);
+         # 20% of all players must be level 45+
+@@ -1193,13 +1194,13 @@
+             splice(@bans,0,4);
+         }
+     }
+-    if ($rpreport%1800==0) { # 30 mins
++    if ($rpreport%1800 < $oldrpreport%1800) { # 30 mins
+         if ($opts{botnick} ne $primnick) {
+             sts($opts{botghostcmd}) if $opts{botghostcmd};
+             sts("NICK $primnick");
+         }
+     }
+-    if ($rpreport%600==0 && $pausemode) { # warn every 10m
++    if (($rpreport%600 < $oldrpreport%600) && $pausemode) { # warn every 10m
+         chanmsg("WARNING: Cannot write database in PAUSE mode!");
+     }
+     # do not write in pause mode, and do not write if not yet connected. (would
+@@ -1235,8 +1236,9 @@
+             # attempt to make sure this is an actual user, and not just an
+             # artifact of a bad PEVAL
+         }
+-        if (!$pausemode && $rpreport%60==0) { writedb(); }
+-        $rpreport += $opts{self_clock};
++        if (!$pausemode && ($rpreport%60 < $oldrpreport%60)) { writedb(); }
++        $oldrpreport = $rpreport;
++        $rpreport += $curtime - $lasttime;
+         $lasttime = $curtime;
+     }
+ }

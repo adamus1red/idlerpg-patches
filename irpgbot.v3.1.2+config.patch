@@ -1,0 +1,11 @@
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	Mon Jun  7 12:28:56 2004
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	Wed Jun 16 22:24:12 2004
+@@ -2336,6 +2336,7 @@
+             $line =~ s/^\s+//g;
+             next() if !length($line); # skip blank lines
+             ($key,$val) = split(/\s+/,$line,2);
++            $val = "" if !defined($val);
+             $key = lc($key);
+             if (lc($val) eq "on" || lc($val) eq "yes") { $val = 1; }
+             elsif (lc($val) eq "off" || lc($val) eq "no") { $val = 0; }

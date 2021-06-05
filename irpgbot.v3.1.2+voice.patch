@@ -1,0 +1,20 @@
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	Mon Jun  7 12:28:56 2004
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	Thu Jun 17 16:26:19 2004
+@@ -393,12 +393,15 @@
+             }
+             if ($opts{voiceonlogin}) {
+                 my @vnicks = map { $rps{$_}{nick} } keys(%auto_login);
+-                while (@vnicks) {
++                while (scalar @vnicks >= $opts{modesperline}) {
+                     sts("MODE $opts{botchan} +".
+                         ('v' x $opts{modesperline})." ".
+                         join(" ",@vnicks[0..$opts{modesperline}-1]));
+                     splice(@vnicks,0,$opts{modesperline});
+                 }
++                sts("MODE $opts{botchan} +".
++                    ('v' x (scalar @vnicks))." ".
++                    join(" ",@vnicks));
+             }
+         }
+         else { chanmsg("0 users qualified for auto login."); }

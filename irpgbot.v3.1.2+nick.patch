@@ -1,0 +1,13 @@
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	Mon Jun  7 12:28:56 2004
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	Thu Jun 17 16:26:19 2004
+@@ -1995,8 +1995,7 @@
+         }
+         $rps{$username}{pen_nick}+=$pen;
+         $rps{$username}{nick} = substr($newnick,1);
+-        substr($rps{$username}{userhost},0,length($rps{$username}{nick})) =
+-            substr($newnick,1);
++        $rps{$username}{userhost} =~ s/^[^!]+/$rps{$username}{nick}/e;
+         notice("Penalty of ".duration($pen)." added to your timer for ".
+                "nick change.",$rps{$username}{nick});
+     }

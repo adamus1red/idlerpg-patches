@@ -1,0 +1,459 @@
+diff -ur irpgbot.v3.1.2/.irpg.conf irpgbot.v3.1.2+johm+chschu/.irpg.conf
+--- irpgbot.v3.1.2/.irpg.conf	Mon Jun  7 12:28:56 2004
++++ irpgbot.v3.1.2+johm+chschu/.irpg.conf	Wed Jun 16 22:24:12 2004
+@@ -66,6 +66,9 @@
+ # base time to level up, 600 = 10 minutes
+ rpbase 600
+ 
++# base time for items to level down, 600 = 10 minutes
++rpitembase 50
++
+ # time to next level = rpbase * (rpstep ** CURRENT_LEVEL)
+ rpstep 1.16
+ 
+@@ -74,6 +77,9 @@
+ 
+ # player database file
+ dbfile irpg.db
++
++# item database file
++itemdbfile mapitems.db
+ 
+ # where quests/godsends/calamities are stored
+ eventsfile events.txt
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	Mon Jun  7 12:28:56 2004
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	Wed Jun 16 22:24:12 2004
+@@ -111,6 +111,7 @@
+     text => "",
+     type => 1,
+     stage => 1); # quest info
++my %mapitems = (); # items lying around
+ 
+ my $rpreport = 0; # constant for reporting top players
+ my %prev_online; # user@hosts online on restart, die
+@@ -1150,6 +1151,7 @@
+     if (rand((12*86400)/$opts{self_clock}) < $onlinegood) { goodness(); }
+ 
+     moveplayers();
++    process_items();
+     
+     # statements using $rpreport do not bother with scaling by the clock because
+     # $rpreport is adjusted by the number of seconds since last rpcheck()
+@@ -1277,11 +1279,11 @@
+                          "pair of gloves","set of leggings","shield",
+                          "pair of boots");
+             my $type = $items[rand(@items)];
+-            if (int($rps{$opp}{item}{$type}) > int($rps{$u}{item}{$type})) {
++            if (itemlevel($rps{$opp}{item}{$type}) > itemlevel($rps{$u}{item}{$type})) {
+                 chanmsg(clog("In the fierce battle, $opp dropped his level ".
+-                             int($rps{$opp}{item}{$type})." $type! $u picks ".
++                             itemlevel($rps{$opp}{item}{$type})." $type! $u picks ".
+                              "it up, tossing his old level ".
+-                             int($rps{$u}{item}{$type})." $type to $opp."));
++                             itemlevel($rps{$u}{item}{$type})." $type to $opp."));
+                 my $tempitem = $rps{$u}{item}{$type};
+                 $rps{$u}{item}{$type}=$rps{$opp}{item}{$type};
+                 $rps{$opp}{item}{$type} = $tempitem;
+@@ -1334,6 +1336,122 @@
+     }
+ }
+ 
++sub itemlevel {
++    my $level = shift;
++    $level =~ s/\D$//;
++    return $level;
++}
++
++sub itemtag {
++    my $level = shift;
++    $level =~ s/^\d+//;
++    return $level;
++}
++
++sub process_items { # decrease items lying around
++    my $curtime = time();
++
++    for my $xy (keys(%mapitems)) {
++        for my $i (0..$#{$mapitems{$xy}}) {
++            my $level = $mapitems{$xy}[$i]{level};
++            my $ttl = int($opts{rpitembase} * ttl(itemlevel($level)) / 600);
++            if ($mapitems{$xy}[$i]{lasttime} + $ttl <= $curtime ) {
++               $mapitems{$xy}[$i]{lasttime} += $ttl;
++               $mapitems{$xy}[$i]{level} = downgrade_item($level);
++               splice(@{$mapitems{$xy}},$i,1) if ($mapitems{$xy}[$i]{level} == 0);
++               delete($mapitems{$xy}) if (scalar(@{$mapitems{$xy}} == 0));
++            }
++        }
++    }
++}
++
++sub drop_item { # drop item on the map
++    my $u = shift;
++    my $type = shift;
++    my $level = shift;
++    my $ulevel = itemlevel($level);
++    my $x = $rps{$u}{x};
++    my $y = $rps{$u}{y};
++
++    push(@{$mapitems{"$x:$y"}},{type=>$type,level=>$level,lasttime=>time()}) if ($ulevel > 0);
++}
++
++sub downgrade_item { # returns the decreased item level
++    my $level = shift;
++    my $ulevel = itemlevel($level);
++    my $tag = itemtag($level);
++    my %minlevel = (''=>0,a=>50,h=>50,b=>75,d=>150,e=>175,f=>250,g=>300);
++    $tag = '' if ($ulevel == $minlevel{$tag});
++    $ulevel-- if ($ulevel > 0);
++    return "$ulevel$tag";
++}
++
++sub exchange_item { # take item and drop the current
++    my $u = shift;
++    my $type = shift;
++    my $level = shift;
++    my $ulevel = itemlevel($level);
++    my $tag = itemtag($level);
++
++    if ($tag eq 'a') {
++        notice("The light of the gods shines down upon you! You have ".
++               "found the level $ulevel Mattt's Omniscience Grand Crown! ".
++               "Your enemies fall before you as you anticipate their ".
++               "every move.",$rps{$u}{nick});
++    }
++    elsif ($tag eq 'b') {
++        notice("The light of the gods shines down upon you! You have ".
++               "found the level $ulevel Res0's Protectorate Plate Mail! ".
++               "Your enemies cower in fear as their attacks have no ".
++               "effect on you.",$rps{$u}{nick});
++    }
++    elsif ($tag eq 'c') {
++        notice("The light of the gods shines down upon you! You have ".
++               "found the level $ulevel Dwyn's Storm Magic Amulet! Your ".
++               "enemies are swept away by an elemental fury before the ".
++               "war has even begun",$rps{$u}{nick});
++    }
++    elsif ($tag eq 'd') {
++        notice("The light of the gods shines down upon you! You have ".
++               "found the level $ulevel Jotun's Fury Colossal Sword! Your ".
++               "enemies' hatred is brought to a quick end as you arc your ".
++               "wrist, dealing the crushing blow.",$rps{$u}{nick});
++    }
++    elsif ($tag eq 'e') {
++        notice("The light of the gods shines down upon you! You have ".
++               "found the level $ulevel Drdink's Cane of Blind Rage! Your ".
++               "enemies are tossed aside as you blindly swing your arm ".
++               "around hitting stuff.",$rps{$u}{nick});
++    }
++    elsif ($tag eq 'f') {
++        notice("The light of the gods shines down upon you! You have ".
++               "found the level $ulevel Mrquick's Magical Boots of ".
++               "Swiftness! Your enemies are left choking on your dust as ".
++               "you run from them very, very quickly.",$rps{$u}{nick});
++    }
++    elsif ($tag eq 'g') {
++        notice("The light of the gods shines down upon you! You have ".
++               "found the level $ulevel Jeff's Cluehammer of Doom! Your ".
++               "enemies are left with a sudden and intense clarity of ".
++               "mind... even as you relieve them of it.",$rps{$u}{nick});
++    }
++    elsif ($tag eq 'h') {
++        notice("The light of the gods shines down upon you! You have ".
++               "found the level $ulevel Juliet's Glorious Ring of ".
++               "Sparkliness! You enemies are blinded by both its glory ".
++               "and their greed as you bring desolation upon them.",
++               $rps{$u}{nick});
++    }
++    else {
++        notice("You found a level $level $type! Your current $type is only ".
++               "level ".itemlevel($rps{$u}{item}{$type}).", so it seems Luck is ".
++               "with you!",$rps{$u}{nick});
++    }
++
++    drop_item($u,$type,$rps{$u}{item}{$type});
++    $rps{$u}{item}{$type} = $level;
++}
++
+ sub find_item { # find item for argument player
+     my $u = shift;
+     my @items = ("ring","amulet","charm","weapon","helm","tunic",
+@@ -1348,108 +1466,73 @@
+     }
+     if ($rps{$u}{level} >= 25 && rand(40) < 1) {
+         $ulevel = 50+int(rand(25));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{helm})) {
+-            notice("The light of the gods shines down upon you! You have ".
+-                   "found the level $ulevel Mattt's Omniscience Grand Crown! ".
+-                   "Your enemies fall before you as you anticipate their ".
+-                   "every move.",$rps{$u}{nick});
+-            $rps{$u}{item}{helm} = $ulevel."a";
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{helm})) {
++            exchange_item($u,"helm",$ulevel."a");
+             return;
+         }
+     }
+     elsif ($rps{$u}{level} >= 25 && rand(40) < 1) {
+         $ulevel = 50+int(rand(25));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{ring})) {
+-            notice("The light of the gods shines down upon you! You have ".
+-                   "found the level $ulevel Juliet's Glorious Ring of ".
+-                   "Sparkliness! You enemies are blinded by both its glory ".
+-                   "and their greed as you bring desolation upon them.",
+-                   $rps{$u}{nick});
+-            $rps{$u}{item}{ring} = $ulevel."h";
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{ring})) {
++            exchange_item($u,"ring",$ulevel."h");
+             return;
+         }
+     }
+     elsif ($rps{$u}{level} >= 30 && rand(40) < 1) {
+         $ulevel = 75+int(rand(25));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{tunic})) {
+-            notice("The light of the gods shines down upon you! You have ".
+-                   "found the level $ulevel Res0's Protectorate Plate Mail! ".
+-                   "Your enemies cower in fear as their attacks have no ".
+-                   "effect on you.",$rps{$u}{nick});
+-            $rps{$u}{item}{tunic} = $ulevel."b";
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{tunic})) {
++            exchange_item($u,"tunic",$ulevel."b");
+             return;
+         }
+     }
+     elsif ($rps{$u}{level} >= 35 && rand(40) < 1) {
+         $ulevel = 100+int(rand(25));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{amulet})) {
+-            notice("The light of the gods shines down upon you! You have ".
+-                   "found the level $ulevel Dwyn's Storm Magic Amulet! Your ".
+-                   "enemies are swept away by an elemental fury before the ".
+-                   "war has even begun",$rps{$u}{nick});
+-            $rps{$u}{item}{amulet} = $ulevel."c";
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{amulet})) {
++            exchange_item($u,"amulet",$ulevel."c");
+             return;
+         }
+     }
+     elsif ($rps{$u}{level} >= 40 && rand(40) < 1) {
+         $ulevel = 150+int(rand(25));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{weapon})) {
+-            notice("The light of the gods shines down upon you! You have ".
+-                   "found the level $ulevel Jotun's Fury Colossal Sword! Your ".
+-                   "enemies' hatred is brought to a quick end as you arc your ".
+-                   "wrist, dealing the crushing blow.",$rps{$u}{nick});
+-            $rps{$u}{item}{weapon} = $ulevel."d";
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{weapon})) {
++            exchange_item($u,"weapon",$ulevel."d");
+             return;
+         }
+     }
+     elsif ($rps{$u}{level} >= 45 && rand(40) < 1) {
+         $ulevel = 175+int(rand(26));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{weapon})) {
+-            notice("The light of the gods shines down upon you! You have ".
+-                   "found the level $ulevel Drdink's Cane of Blind Rage! Your ".
+-                   "enemies are tossed aside as you blindly swing your arm ".
+-                   "around hitting stuff.",$rps{$u}{nick});
+-            $rps{$u}{item}{weapon} = $ulevel."e";
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{weapon})) {
++            exchange_item($u,"weapon",$ulevel."e");
+             return;
+         }
+     }
+     elsif ($rps{$u}{level} >= 48 && rand(40) < 1) {
+         $ulevel = 250+int(rand(51));
+         if ($ulevel >= $level && $ulevel >
+-            int($rps{$u}{item}{"pair of boots"})) {
+-            notice("The light of the gods shines down upon you! You have ".
+-                   "found the level $ulevel Mrquick's Magical Boots of ".
+-                   "Swiftness! Your enemies are left choking on your dust as ".
+-                   "you run from them very, very quickly.",$rps{$u}{nick});
+-            $rps{$u}{item}{"pair of boots"} = $ulevel."f";
++            itemlevel($rps{$u}{item}{"pair of boots"})) {
++            exchange_item($u,"pair of boots",$ulevel."f");
+             return;
+         }
+     }
+     elsif ($rps{$u}{level} >= 52 && rand(40) < 1) {
+         $ulevel = 300+int(rand(51));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{weapon})) {
+-            notice("The light of the gods shines down upon you! You have ".
+-                   "found the level $ulevel Jeff's Cluehammer of Doom! Your ".
+-                   "enemies are left with a sudden and intense clarity of ".
+-                   "mind... even as you relieve them of it.",$rps{$u}{nick});
+-            $rps{$u}{item}{weapon} = $ulevel."g";
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{weapon})) {
++            exchange_item($u,"weapon",$ulevel."g");
+             return;
+         }
+     }
+-    if ($level > int($rps{$u}{item}{$type})) {
+-        notice("You found a level $level $type! Your current $type is only ".
+-               "level ".int($rps{$u}{item}{$type}).", so it seems Luck is ".
+-               "with you!",$rps{$u}{nick});
+-        $rps{$u}{item}{$type} = $level;
++    if ($level > itemlevel($rps{$u}{item}{$type})) {
++        exchange_item($u,$type,$level);
+     }
+     else {
+         notice("You found a level $level $type. Your current $type is level ".
+-               int($rps{$u}{item}{$type}).", so it seems Luck is against you. ".
++               itemlevel($rps{$u}{item}{$type}).", so it seems Luck is against you. ".
+                "You toss the $type.",$rps{$u}{nick});
++        drop_item($u,$type,$level);
+     }
+ }
+ 
+-sub loaddb { # load the players database
++sub loaddb { # load the players and items database
+     backup();
+     my $l;
+     %rps = ();
+@@ -1505,6 +1588,28 @@
+     close(RPS);
+     debug("loaddb(): loaded ".scalar(keys(%rps))." accounts, ".
+           scalar(keys(%prev_online))." previously online.");
++    if (!open(ITEMS,$opts{itemdbfile}) && -e $opts{itemdbfile}) {
++        sts("QUIT :loaddb() failed: $!");
++    }
++    my $cnt = 0;
++    %mapitems = ();
++    while ($l=<ITEMS>) {
++        chomp($l);
++        next if $l =~ /^#/; # skip comments
++        my @i = split("\t",$l);
++        print Dumper(@i) if @i != 5;
++        if (@i != 5) {
++            sts("QUIT: Anomaly in loaddb(); line $. of $opts{itemdbfile} has ".
++                "wrong fields (".scalar(@i).")");
++            debug("Anomaly in loaddb(); line $. of $opts{itemdbfile} has wrong ".
++                "fields (".scalar(@i).")",1);
++        }
++        my $curtime = time();
++        push(@{$mapitems{"$i[0]:$i[1]"}},{type=>$i[2],level=>$i[3],lasttime=>$curtime-$i[4]});
++        $cnt++;
++    }
++    close(ITEMS);
++    debug("loaddb(): loaded $cnt items.");
+ }
+ 
+ sub moveplayers {
+@@ -1641,6 +1746,20 @@
+                 }
+             }
+         }
++        # pick up items lying around
++        for my $u (keys(%rps)) {
++            next unless $rps{$u}{online};
++            my $x = $rps{$u}{x};
++            my $y = $rps{$u}{y};
++            next unless exists($mapitems{"$x:$y"});
++            for $i (0..$#{$mapitems{"$x:$y"}}) {
++                my $item = $mapitems{"$x:$y"}[$i];
++                if (itemlevel($item->{level}) > itemlevel($rps{$u}{item}{$item->{type}})) {
++                    exchange_item($u,$item->{type},$item->{level});
++                    splice(@{$mapitems{"$x:$y"}},$i,1);
++                }
++            }
++        }
+     }
+ }
+ 
+@@ -1728,7 +1847,7 @@
+         return $sum+1;
+     }
+     if (!exists($rps{$user})) { return -1; }
+-    $sum += int($rps{$user}{item}{$_}) for keys(%{$rps{$user}{item}});
++    $sum += itemlevel($rps{$user}{item}{$_}) for keys(%{$rps{$user}{item}});
+     if ($battle) {
+         return $rps{$user}{alignment} eq 'e' ? int($sum*.9) :
+                $rps{$user}{alignment} eq 'g' ? int($sum*1.1) :
+@@ -1800,7 +1919,7 @@
+         }
+         my $suffix="";
+         if ($rps{$player}{item}{$type} =~ /(\D)$/) { $suffix=$1; }
+-        $rps{$player}{item}{$type} = int(int($rps{$player}{item}{$type}) * .9);
++        $rps{$player}{item}{$type} = int(itemlevel($rps{$player}{item}{$type}) * .9);
+         $rps{$player}{item}{$type}.=$suffix;
+     }
+     else {
+@@ -1857,7 +1976,7 @@
+         }
+         my $suffix="";
+         if ($rps{$player}{item}{$type} =~ /(\D)$/) { $suffix=$1; }
+-        $rps{$player}{item}{$type} = int(int($rps{$player}{item}{$type}) * 1.1);
++        $rps{$player}{item}{$type} = int(itemlevel($rps{$player}{item}{$type}) * 1.1);
+         $rps{$player}{item}{$type}.=$suffix;
+     }
+     else {
+@@ -1966,9 +2085,11 @@
+     if (! -d ".dbbackup/") { mkdir(".dbbackup",0700); }
+     if ($^O ne "MSWin32") {
+         system("cp $opts{dbfile} .dbbackup/$opts{dbfile}".time());
++        system("cp $opts{itemdbfile} .dbbackup/$opts{itemdbfile}".time());
+     }
+     else {
+         system("copy $opts{dbfile} .dbbackup\\$opts{dbfile}".time());
++        system("copy $opts{itemdbfile} .dbbackup\\$opts{itemdbfile}".time());
+     }
+ }
+ 
+@@ -2115,10 +2236,10 @@
+                          "pair of gloves","set of leggings","shield",
+                          "pair of boots");
+             my $type = $items[rand(@items)];
+-            if (int($rps{$opp}{item}{$type}) > int($rps{$u}{item}{$type})) {
++            if (itemlevel($rps{$opp}{item}{$type}) > itemlevel($rps{$u}{item}{$type})) {
+                 chanmsg("In the fierce battle, $opp dropped his level ".
+-                        int($rps{$opp}{item}{$type})." $type! $u picks it up, ".
+-                        "tossing his old level ".int($rps{$u}{item}{$type}).
++                        itemlevel($rps{$opp}{item}{$type})." $type! $u picks it up, ".
++                        "tossing his old level ".itemlevel($rps{$u}{item}{$type}).
+                         " $type to $opp.");
+                 my $tempitem = $rps{$u}{item}{$type};
+                 $rps{$u}{item}{$type}=$rps{$opp}{item}{$type};
+@@ -2206,14 +2327,14 @@
+                      "pair of gloves","set of leggings","shield",
+                      "pair of boots");
+         my $type = $items[rand(@items)];
+-        if (int($rps{$target}{item}{$type}) > int($rps{$me}{item}{$type})) {
++        if (itemlevel($rps{$target}{item}{$type}) > itemlevel($rps{$me}{item}{$type})) {
+             my $tempitem = $rps{$me}{item}{$type};
+             $rps{$me}{item}{$type} = $rps{$target}{item}{$type};
+             $rps{$target}{item}{$type} = $tempitem;
+             chanmsg(clog("$me stole $target\'s level ".
+-                         int($rps{$me}{item}{$type})." $type while they were ".
++                         itemlevel($rps{$me}{item}{$type})." $type while they were ".
+                          "sleeping! $me leaves his old level ".
+-                         int($rps{$target}{item}{$type})." $type behind, ".
++                         itemlevel($rps{$target}{item}{$type})." $type behind, ".
+                          "which $target then takes."));
+         }
+         else {
+@@ -2318,6 +2439,27 @@
+         }
+     }
+     close(RPS);
++    open(ITEMS,">$opts{itemdbfile}") or do {
++        chanmsg("ERROR: Cannot write $opts{itemdbfile}: $!");
++        return 0;
++    };
++    print ITEMS join("\t","# x pos",
++                        "y pos",
++                        "type",
++                        "level",
++                        "age")."\n";
++    my $curtime = time();
++    for my $xy (keys(%mapitems)) {
++        for my $i (0..$#{$mapitems{$xy}}) {
++            my @coords = split(/:/,$xy);
++            print ITEMS join("\t",$coords[0],
++                                  $coords[1],
++                                  $mapitems{$xy}[$i]{type},
++                                  $mapitems{$xy}[$i]{level},
++                                  $curtime-$mapitems{$xy}[$i]{lasttime})."\n";
++        }
++    }
++    close(ITEMS);
+ }
+ 
+ sub readconfig {

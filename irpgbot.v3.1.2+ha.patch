@@ -1,0 +1,16 @@
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	Mon Jun  7 12:28:56 2004
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	Wed Jun 16 22:24:12 2004
+@@ -2070,7 +2070,11 @@
+ 
+ sub ha { # return 0/1 if username has access
+     my $user = shift;
+-    if (!defined($user) || !exists($rps{$user})) {
++    if (!defined($user)) {
++        debug("Error: Attempted ha() for undefined username");
++        return 0;
++    }
++    if (!exists($rps{$user})) {
+         debug("Error: Attempted ha() for invalid username \"$user\"");
+         return 0;
+     }

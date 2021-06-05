@@ -1,0 +1,50 @@
+diff -ur irpgbot.v3.1.2/.irpg.conf irpgbot.v3.1.2+johm+chschu/.irpg.conf
+--- irpgbot.v3.1.2/.irpg.conf	2004-06-07 16:06:04.000000000 +0200
++++ irpgbot.v3.1.2+johm+chschu/.irpg.conf	2004-06-17 00:26:05.000000000 +0200
+@@ -171,6 +171,10 @@
+ # string), then users can cheat this at their whim
+ detectsplits on
+ 
++# auto-login clients (after netsplit, ping timeout ...) if they haven't
++# changed their nick!user@host
++autologin on
++
+ # time to wait for netsplit users to return? in seconds. 900 = 15 minutes, good
+ # for large nets
+ splitwait 900
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	2004-06-07 16:06:06.000000000 +0200
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	2004-06-17 00:26:05.000000000 +0200
+@@ -72,6 +72,7 @@
+     "modsfile=s",
+     "casematters",
+     "detectsplits",
++    "autologin",
+     "splitwait=i",
+     "allowuserinfo",
+     "noscale",
+@@ -327,6 +328,24 @@
+             sts($opcmd);
+             $lasttime = time(); # start rpcheck()
+         }
++        elsif ($opts{autologin}) {
++            for my $k (keys %rps) {
++                if (":".$rps{$k}{userhost} eq $arg[0]) {
++                    if ($opts{voiceonlogin}) {          
++                        sts("MODE $opts{botchan} +v :$usernick");
++                    }
++                    $rps{$k}{online} = 1;
++                    $rps{$k}{nick} = $usernick;
++                    $rps{$k}{lastlogin} = time();
++                    chanmsg("$k, the level $rps{$k}{level} ".
++                            "$rps{$k}{class}, is now online from ".
++                            "nickname $usernick. Next level in ".
++                            duration($rps{$k}{next}).".");       
++                    notice("Logon successful. Next level in ".
++                           duration($rps{$k}{next}).".", $usernick);
++                }
++            }
++        }
+     }
+     elsif ($arg[1] eq 'quit') {
+         # if we see our nick come open, grab it (skipping queue)

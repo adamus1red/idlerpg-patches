@@ -1,0 +1,187 @@
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	Mon Jun  7 12:28:56 2004
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	Wed Jun 16 22:28:54 2004
+@@ -1277,11 +1277,11 @@
+                          "pair of gloves","set of leggings","shield",
+                          "pair of boots");
+             my $type = $items[rand(@items)];
+-            if (int($rps{$opp}{item}{$type}) > int($rps{$u}{item}{$type})) {
++            if (itemlevel($rps{$opp}{item}{$type}) > itemlevel($rps{$u}{item}{$type})) {
+                 chanmsg(clog("In the fierce battle, $opp dropped his level ".
+-                             int($rps{$opp}{item}{$type})." $type! $u picks ".
++                             itemlevel($rps{$opp}{item}{$type})." $type! $u picks ".
+                              "it up, tossing his old level ".
+-                             int($rps{$u}{item}{$type})." $type to $opp."));
++                             itemlevel($rps{$u}{item}{$type})." $type to $opp."));
+                 my $tempitem = $rps{$u}{item}{$type};
+                 $rps{$u}{item}{$type}=$rps{$opp}{item}{$type};
+                 $rps{$opp}{item}{$type} = $tempitem;
+@@ -1334,6 +1334,18 @@
+     }
+ }
+ 
++sub itemlevel {
++    my $level = shift;
++    $level =~ s/\D$//;
++    return $level;
++}
++
++sub itemtag {
++    my $level = shift;
++    $level =~ s/^\d+//;
++    return $level;
++}
++
+ sub find_item { # find item for argument player
+     my $u = shift;
+     my @items = ("ring","amulet","charm","weapon","helm","tunic",
+@@ -1348,7 +1360,7 @@
+     }
+     if ($rps{$u}{level} >= 25 && rand(40) < 1) {
+         $ulevel = 50+int(rand(25));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{helm})) {
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{helm})) {
+             notice("The light of the gods shines down upon you! You have ".
+                    "found the level $ulevel Mattt's Omniscience Grand Crown! ".
+                    "Your enemies fall before you as you anticipate their ".
+@@ -1359,7 +1371,7 @@
+     }
+     elsif ($rps{$u}{level} >= 25 && rand(40) < 1) {
+         $ulevel = 50+int(rand(25));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{ring})) {
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{ring})) {
+             notice("The light of the gods shines down upon you! You have ".
+                    "found the level $ulevel Juliet's Glorious Ring of ".
+                    "Sparkliness! You enemies are blinded by both its glory ".
+@@ -1371,7 +1383,7 @@
+     }
+     elsif ($rps{$u}{level} >= 30 && rand(40) < 1) {
+         $ulevel = 75+int(rand(25));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{tunic})) {
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{tunic})) {
+             notice("The light of the gods shines down upon you! You have ".
+                    "found the level $ulevel Res0's Protectorate Plate Mail! ".
+                    "Your enemies cower in fear as their attacks have no ".
+@@ -1382,7 +1394,7 @@
+     }
+     elsif ($rps{$u}{level} >= 35 && rand(40) < 1) {
+         $ulevel = 100+int(rand(25));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{amulet})) {
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{amulet})) {
+             notice("The light of the gods shines down upon you! You have ".
+                    "found the level $ulevel Dwyn's Storm Magic Amulet! Your ".
+                    "enemies are swept away by an elemental fury before the ".
+@@ -1393,7 +1405,7 @@
+     }
+     elsif ($rps{$u}{level} >= 40 && rand(40) < 1) {
+         $ulevel = 150+int(rand(25));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{weapon})) {
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{weapon})) {
+             notice("The light of the gods shines down upon you! You have ".
+                    "found the level $ulevel Jotun's Fury Colossal Sword! Your ".
+                    "enemies' hatred is brought to a quick end as you arc your ".
+@@ -1404,7 +1416,7 @@
+     }
+     elsif ($rps{$u}{level} >= 45 && rand(40) < 1) {
+         $ulevel = 175+int(rand(26));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{weapon})) {
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{weapon})) {
+             notice("The light of the gods shines down upon you! You have ".
+                    "found the level $ulevel Drdink's Cane of Blind Rage! Your ".
+                    "enemies are tossed aside as you blindly swing your arm ".
+@@ -1416,7 +1428,7 @@
+     elsif ($rps{$u}{level} >= 48 && rand(40) < 1) {
+         $ulevel = 250+int(rand(51));
+         if ($ulevel >= $level && $ulevel >
+-            int($rps{$u}{item}{"pair of boots"})) {
++            itemlevel($rps{$u}{item}{"pair of boots"})) {
+             notice("The light of the gods shines down upon you! You have ".
+                    "found the level $ulevel Mrquick's Magical Boots of ".
+                    "Swiftness! Your enemies are left choking on your dust as ".
+@@ -1427,7 +1439,7 @@
+     }
+     elsif ($rps{$u}{level} >= 52 && rand(40) < 1) {
+         $ulevel = 300+int(rand(51));
+-        if ($ulevel >= $level && $ulevel > int($rps{$u}{item}{weapon})) {
++        if ($ulevel >= $level && $ulevel > itemlevel($rps{$u}{item}{weapon})) {
+             notice("The light of the gods shines down upon you! You have ".
+                    "found the level $ulevel Jeff's Cluehammer of Doom! Your ".
+                    "enemies are left with a sudden and intense clarity of ".
+@@ -1436,15 +1448,15 @@
+             return;
+         }
+     }
+-    if ($level > int($rps{$u}{item}{$type})) {
++    if ($level > itemlevel($rps{$u}{item}{$type})) {
+         notice("You found a level $level $type! Your current $type is only ".
+-               "level ".int($rps{$u}{item}{$type}).", so it seems Luck is ".
++               "level ".itemlevel($rps{$u}{item}{$type}).", so it seems Luck is ".
+                "with you!",$rps{$u}{nick});
+         $rps{$u}{item}{$type} = $level;
+     }
+     else {
+         notice("You found a level $level $type. Your current $type is level ".
+-               int($rps{$u}{item}{$type}).", so it seems Luck is against you. ".
++               itemlevel($rps{$u}{item}{$type}).", so it seems Luck is against you. ".
+                "You toss the $type.",$rps{$u}{nick});
+     }
+ }
+@@ -1728,7 +1740,7 @@
+         return $sum+1;
+     }
+     if (!exists($rps{$user})) { return -1; }
+-    $sum += int($rps{$user}{item}{$_}) for keys(%{$rps{$user}{item}});
++    $sum += itemlevel($rps{$user}{item}{$_}) for keys(%{$rps{$user}{item}});
+     if ($battle) {
+         return $rps{$user}{alignment} eq 'e' ? int($sum*.9) :
+                $rps{$user}{alignment} eq 'g' ? int($sum*1.1) :
+@@ -1800,7 +1812,7 @@
+         }
+         my $suffix="";
+         if ($rps{$player}{item}{$type} =~ /(\D)$/) { $suffix=$1; }
+-        $rps{$player}{item}{$type} = int(int($rps{$player}{item}{$type}) * .9);
++        $rps{$player}{item}{$type} = int(itemlevel($rps{$player}{item}{$type}) * .9);
+         $rps{$player}{item}{$type}.=$suffix;
+     }
+     else {
+@@ -1857,7 +1869,7 @@
+         }
+         my $suffix="";
+         if ($rps{$player}{item}{$type} =~ /(\D)$/) { $suffix=$1; }
+-        $rps{$player}{item}{$type} = int(int($rps{$player}{item}{$type}) * 1.1);
++        $rps{$player}{item}{$type} = int(itemlevel($rps{$player}{item}{$type}) * 1.1);
+         $rps{$player}{item}{$type}.=$suffix;
+     }
+     else {
+@@ -2115,10 +2127,10 @@
+                          "pair of gloves","set of leggings","shield",
+                          "pair of boots");
+             my $type = $items[rand(@items)];
+-            if (int($rps{$opp}{item}{$type}) > int($rps{$u}{item}{$type})) {
++            if (itemlevel($rps{$opp}{item}{$type}) > itemlevel($rps{$u}{item}{$type})) {
+                 chanmsg("In the fierce battle, $opp dropped his level ".
+-                        int($rps{$opp}{item}{$type})." $type! $u picks it up, ".
+-                        "tossing his old level ".int($rps{$u}{item}{$type}).
++                        itemlevel($rps{$opp}{item}{$type})." $type! $u picks it up, ".
++                        "tossing his old level ".itemlevel($rps{$u}{item}{$type}).
+                         " $type to $opp.");
+                 my $tempitem = $rps{$u}{item}{$type};
+                 $rps{$u}{item}{$type}=$rps{$opp}{item}{$type};
+@@ -2206,14 +2218,14 @@
+                      "pair of gloves","set of leggings","shield",
+                      "pair of boots");
+         my $type = $items[rand(@items)];
+-        if (int($rps{$target}{item}{$type}) > int($rps{$me}{item}{$type})) {
++        if (itemlevel($rps{$target}{item}{$type}) > itemlevel($rps{$me}{item}{$type})) {
+             my $tempitem = $rps{$me}{item}{$type};
+             $rps{$me}{item}{$type} = $rps{$target}{item}{$type};
+             $rps{$target}{item}{$type} = $tempitem;
+             chanmsg(clog("$me stole $target\'s level ".
+-                         int($rps{$me}{item}{$type})." $type while they were ".
++                         itemlevel($rps{$me}{item}{$type})." $type while they were ".
+                          "sleeping! $me leaves his old level ".
+-                         int($rps{$target}{item}{$type})." $type behind, ".
++                         itemlevel($rps{$target}{item}{$type})." $type behind, ".
+                          "which $target then takes."));
+         }
+         else {

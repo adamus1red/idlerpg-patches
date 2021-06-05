@@ -1,0 +1,82 @@
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	Mon Jun  7 12:28:56 2004
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	Wed Jun 16 23:58:13 2004
+@@ -1303,8 +1303,31 @@
+ sub team_battle { # pit three players against three other players
+     my @opp = grep { $rps{$_}{online} } keys(%rps);
+     return if @opp < 6;
+-    splice(@opp,int(rand(@opp)),1) while @opp > 6;
+-    fisher_yates_shuffle(\@opp);
++    # choose random point       
++    my $x = int(rand($opts{mapx}));
++    my $y = int(rand($opts{mapy}));
++    my %polar = ();
++    for my $player (@opp) {   
++        my $dx = $rps{$player}{x}-$x;
++        my $dy = $rps{$player}{y}-$y;
++        # polar coordinates
++        $polar{$player}{r} = sqrt($dx*$dx+$dy*$dy);
++        $polar{$player}{phi} = atan2($dy,$dx)      
++    }
++    # sort by radius 
++    my @sorted = sort { $polar{$a}{r} <=> $polar{$b}{r} } keys %polar;
++    # get players at least as close as #6
++    @sorted = grep { $polar{$_}{r} <= $polar{$sorted[5]}{r} } @sorted;
++    # pick 6 random players from these  
++    @opp = ();
++    for (my $i = 0; $i < 6; $i++) {
++        $opp[$i] = splice(@sorted,int(rand(@sorted)),1);  
++    }
++    # sort by angle
++    @opp = sort { $polar{$a}{phi} <=> $polar{$b}{phi} } @opp;
++    # shift splitting position
++    my $rot = int(rand(6));
++    @opp = @opp[$rot..5,0..$rot-1];  
+     my $mysum = itemsum($opp[0],1) + itemsum($opp[1],1) + itemsum($opp[2],1);
+     my $oppsum = itemsum($opp[3],1) + itemsum($opp[4],1) + itemsum($opp[5],1);
+     my $gain = $rps{$opp[0]}{next};
+@@ -1315,19 +1338,19 @@
+     my $myroll = int(rand($mysum));
+     my $opproll = int(rand($oppsum));
+     if ($myroll >= $opproll) {
+-        chanmsg(clog("$opp[0], $opp[1], and $opp[2] [$myroll/$mysum] have ".
+-                     "team battled $opp[3], $opp[4], and $opp[5] [$opproll/".
+-                     "$oppsum] and won! ".duration($gain)." is removed from ".
+-                     "their clocks."));
++        chanmsg(clog("$opp[0], $opp[1] and $opp[2] [$myroll/$mysum] have team ".
++                     "battled $opp[3], $opp[4] and $opp[5] [$opproll/$oppsum] ".
++                     "at [$x,$y] and won! ".duration($gain)." is removed ".
++                     "from their clocks."));
+         $rps{$opp[0]}{next} -= $gain;
+         $rps{$opp[1]}{next} -= $gain;
+         $rps{$opp[2]}{next} -= $gain;
+     }
+     else {
+-        chanmsg(clog("$opp[0], $opp[1], and $opp[2] [$myroll/$mysum] have ".
+-                     "team battled $opp[3], $opp[4], and $opp[5] [$opproll/".
+-                     "$oppsum] and lost! ".duration($gain)." is added to ".
+-                     "their clocks."));
++        chanmsg(clog("$opp[0], $opp[1] and $opp[2] [$myroll/$mysum] have team ".
++                     "battled $opp[3], $opp[4] and $opp[5] [$opproll/$oppsum] ".
++                     "at [$x,$y] and lost! ".duration($gain)." is added ".
++                     "to their clocks."));
+         $rps{$opp[0]}{next} += $gain;
+         $rps{$opp[1]}{next} += $gain;
+         $rps{$opp[2]}{next} += $gain;
+@@ -2229,16 +2252,6 @@
+                      "to his clock."));
+         $rps{$me}{next} = int($rps{$me}{next} * (1 + ($gain/100)));
+         chanmsg("$me reaches next level in ".duration($rps{$me}{next}).".");
+-    }
+-}
+-
+-sub fisher_yates_shuffle {
+-    my $array = shift;
+-    my $i;
+-    for ($i = @$array; --$i; ) {
+-        my $j = int rand ($i+1);
+-        next if $i == $j;
+-        @$array[$i,$j] = @$array[$j,$i];
+     }
+ }
+ 

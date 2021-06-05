@@ -1,0 +1,110 @@
+diff -ur irpgbot.v3.1.2/bot.v3.1.2.pl irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl
+--- irpgbot.v3.1.2/bot.v3.1.2.pl	2004-06-07 16:06:06.000000000 +0200
++++ irpgbot.v3.1.2+johm+chschu/bot.v3.1.2.pl	2004-06-17 00:35:38.000000000 +0200
+@@ -1085,6 +1085,20 @@
+     }
+ }
+ 
++sub ttl { # return ttl
++    my $lvl = shift;
++    return ($opts{rpbase} * ($opts{rpstep}**$lvl)) if $lvl <= 60;
++    return (($opts{rpbase} * ($opts{rpstep}**60))
++             + (86400*($lvl - 60)));
++}
++
++sub penttl { # return ttl with $opts{rppenstep}
++    my $lvl = shift;
++    return ($opts{rpbase} * ($opts{rppenstep}**$lvl)) if $lvl <= 60;
++    return (($opts{rpbase} * ($opts{rppenstep}**60))
++             + (86400*($lvl - 60)));
++}
++
+ sub duration { # return human duration of seconds
+     my $s = shift;
+     return "NA ($s)" if $s !~ /^\d+$/;
+@@ -1215,19 +1229,12 @@
+                 $rps{$k}{next} -= ($curtime - $lasttime);
+                 $rps{$k}{idled} += ($curtime - $lasttime);
+                 if ($rps{$k}{next} < 1) {
++                    my $ttl = int(ttl($rps{$k}{level}));
+                     $rps{$k}{level}++;
+-                    if ($rps{$k}{level} > 60) {
+-                        $rps{$k}{next} = int(($opts{rpbase} *
+-                                             ($opts{rpstep}**60)) +
+-                                             (86400*($rps{$k}{level} - 60)));
+-                    }
+-                    else {
+-                        $rps{$k}{next} = int($opts{rpbase} *
+-                                             ($opts{rpstep}**$rps{$k}{level}));
+-                    }
++                    $rps{$k}{next} += $ttl;
+                     chanmsg("$k, the $rps{$k}{class}, has attained level ".
+                             "$rps{$k}{level}! Next level in ".
+-                            duration($rps{$k}{next}).".");
++                            duration($ttl).".");
+                     find_item($k);
+                     challenge_opp($k);
+                 }
+@@ -1940,7 +1947,7 @@
+                          "pressure towards hell. Therefore have you drawn ".
+                          "yourselves 15 steps closer to that gaping maw."));
+             for $player (grep { $rps{$_}{online} } keys %rps) {
+-                my $gain = int(15 * ($opts{rppenstep}**$rps{$player}{level}));
++                my $gain = int(15 * penttl($rps{$player}{level}) / $opts{rpbase});
+                 $rps{$player}{pen_quest} += $gain;
+                 $rps{$player}{next} += $gain;
+             }
+@@ -1980,7 +1987,7 @@
+     my $pen = 0;
+     questpencheck($username);
+     if ($type eq "quit") {
+-        $pen = int(20 * ($opts{rppenstep}**$rps{$username}{level}));
++        $pen = int(20 * penttl($rps{$username}{level}) / $opts{rpbase});
+         if ($opts{limitpen} && $pen > $opts{limitpen}) {
+             $pen = $opts{limitpen};
+         }
+@@ -1989,7 +1996,7 @@
+     }
+     elsif ($type eq "nick") {
+         my $newnick = shift;
+-        $pen = int(30 * ($opts{rppenstep}**$rps{$username}{level}));
++        $pen = int(30 * penttl($rps{$username}{level}) / $opts{rpbase});
+         if ($opts{limitpen} && $pen > $opts{limitpen}) {
+             $pen = $opts{limitpen};
+         }
+@@ -2001,7 +2008,7 @@
+                "nick change.",$rps{$username}{nick});
+     }
+     elsif ($type eq "privmsg" || $type eq "notice") {
+-        $pen = int(shift(@_) * ($opts{rppenstep}**$rps{$username}{level}));
++        $pen = int(shift(@_) * penttl($rps{$username}{level}) / $opts{rpbase});
+         if ($opts{limitpen} && $pen > $opts{limitpen}) {
+             $pen = $opts{limitpen};
+         }
+@@ -2010,7 +2017,7 @@
+                $type.".",$rps{$username}{nick});
+     }
+     elsif ($type eq "part") {
+-        $pen = int(200 * ($opts{rppenstep}**$rps{$username}{level}));
++        $pen = int(200 * penttl($rps{$username}{level}) / $opts{rpbase});
+         if ($opts{limitpen} && $pen > $opts{limitpen}) {
+             $pen = $opts{limitpen};
+         }
+@@ -2020,7 +2027,7 @@
+         $rps{$username}{online}=0;
+     }
+     elsif ($type eq "kick") {
+-        $pen = int(250 * ($opts{rppenstep}**$rps{$username}{level}));
++        $pen = int(250 * penttl($rps{$username}{level}) / $opts{rpbase});
+         if ($opts{limitpen} && $pen > $opts{limitpen}) {
+             $pen = $opts{limitpen};
+         }
+@@ -2030,7 +2037,7 @@
+         $rps{$username}{online}=0;
+     }
+     elsif ($type eq "logout") {
+-        $pen = int(20 * ($opts{rppenstep}**$rps{$username}{level}));
++        $pen = int(20 * penttl($rps{$username}{level}) / $opts{rpbase});
+         if ($opts{limitpen} && $pen > $opts{limitpen}) {
+             $pen = $opts{limitpen};
+         }
